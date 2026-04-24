@@ -5,7 +5,8 @@ import { getAnalytics, logEvent } from 'https://www.gstatic.com/firebasejs/11.6.
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
 } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
@@ -45,13 +46,25 @@ window.fb = {};
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export async function signInWithGoogle() {
   try {
-    const result = await signInWithPopup(auth, provider);
-    logEvent(analytics, 'login', { method: 'Google' });
-    return result.user;
+    await signInWithRedirect(auth, provider);
   } catch (err) {
     console.error('Sign-in error:', err.message);
-    return null;
   }
+  return null;
+}
+
+// Call on page load to handle redirect result
+export async function handleRedirectResult() {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result?.user) {
+      logEvent(analytics, 'login', { method: 'Google_redirect' });
+      return result.user;
+    }
+  } catch (err) {
+    console.error('Redirect result error:', err.message);
+  }
+  return null;
 }
 
 export async function signOutUser() {
@@ -107,6 +120,10 @@ window.fb.onAuthChange = onAuthChange;
 window.fb.trackEvent = trackEvent;
 window.fb.saveMessage = saveMessage;
 window.fb.loadChatHistory = loadChatHistory;
+window.fb.handleRedirectResult = handleRedirectResult;
+
+// Handle redirect result on page load
+handleRedirectResult();
 
 // Listen for auth state changes and notify app.js
 onAuthStateChanged(auth, user => {

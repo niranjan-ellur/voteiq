@@ -5,18 +5,21 @@ const config = require('./config');
 // ── Security headers ──────────────────────────────────────────────────────────
 function applySecurityHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN'); // DENY breaks Firebase auth popup
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups'); // required for Firebase Google Sign-In popup
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://fonts.googleapis.com; " +
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://fonts.googleapis.com https://apis.google.com https://www.googletagmanager.com; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.gstatic.com; " +
     "font-src https://fonts.gstatic.com; " +
-    "connect-src 'self' https://translate.googleapis.com; " +
-    "img-src 'self' data: https://www.gstatic.com https://translate.google.com;"
+    "connect-src 'self' https://www.gstatic.com https://translate.googleapis.com https://translate-pa.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://accounts.google.com https://generativelanguage.googleapis.com https://firebaseinstallations.googleapis.com https://firebase.googleapis.com https://www.googletagmanager.com https://region1.google-analytics.com https://analytics.google.com https://www.google-analytics.com https://www.google.com; " +
+    "img-src 'self' data: https://www.gstatic.com https://translate.google.com https://lh3.googleusercontent.com https://fonts.gstatic.com; " +
+    "frame-src https://voteiq-494318.firebaseapp.com https://accounts.google.com https://www.google.com; " +
+    "worker-src 'self' blob:;"
   );
 }
 
