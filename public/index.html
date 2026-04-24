@@ -74,6 +74,14 @@
           aria-selected="false" role="tab" aria-controls="tab-checklist">
           <span aria-hidden="true">✅</span> My Checklist
         </button>
+        <button class="nav-btn" onclick="showTab('map')" id="nav-map"
+          aria-selected="false" role="tab" aria-controls="tab-map">
+          <span aria-hidden="true">📍</span> Find Booth
+        </button>
+        <button class="nav-btn" onclick="showTab('stats')" id="nav-stats"
+          aria-selected="false" role="tab" aria-controls="tab-stats">
+          <span aria-hidden="true">📊</span> Election Stats
+        </button>
       </nav>
 
       <div class="sidebar-footer">
@@ -150,9 +158,75 @@
         <div class="checklist-container" id="checklist-container" aria-label="Step-by-step checklist"></div>
       </div>
 
+      <!-- Map Tab -->
+      <div id="tab-map" class="tab" role="tabpanel" aria-labelledby="nav-map">
+        <div class="tab-header">
+          <h2>📍 Find Your Polling Booth</h2>
+          <p>Search for election offices and polling stations near you</p>
+        </div>
+        <div class="map-container">
+          <div class="map-search-row">
+            <label for="map-search-input" class="sr-only">Enter your location</label>
+            <input type="text" id="map-search-input" placeholder="Enter your city or area (e.g. Bangalore, Delhi...)" aria-label="Search location for polling booth" />
+            <button onclick="searchMap()" aria-label="Search on map">Search</button>
+          </div>
+          <div class="map-frame-wrap">
+            <iframe
+              id="map-iframe"
+              title="Polling booth map"
+              width="100%"
+              height="100%"
+              style="border:0;"
+              loading="lazy"
+              allowfullscreen
+              referrerpolicy="no-referrer-when-downgrade"
+              src="https://maps.google.com/maps?q=election+commission+office+india&output=embed"
+              aria-label="Google Maps showing election offices"
+            ></iframe>
+          </div>
+          <p class="map-note">
+            Powered by <strong>Google Maps</strong> · Search your city to find the nearest Election Commission office or polling station
+          </p>
+        </div>
+      </div>
+
+      <!-- Stats Tab -->
+      <div id="tab-stats" class="tab" role="tabpanel" aria-labelledby="nav-stats">
+        <div class="tab-header">
+          <h2>📊 Indian Election Statistics</h2>
+          <p>Key data and trends from Indian General Elections — powered by Google Charts</p>
+        </div>
+        <div class="stats-container">
+          <div class="chart-grid">
+
+            <div class="chart-card">
+              <h3>Lok Sabha Seats by Alliance (2024)</h3>
+              <div id="chart-seats" aria-label="Pie chart of Lok Sabha seat distribution 2024"></div>
+            </div>
+
+            <div class="chart-card">
+              <h3>Voter Turnout Trend (2004–2024)</h3>
+              <div id="chart-turnout" aria-label="Bar chart of voter turnout percentage over elections"></div>
+            </div>
+
+            <div class="chart-card">
+              <h3>Registered Voters Growth (Crores)</h3>
+              <div id="chart-voters" aria-label="Line chart of registered voter count growth"></div>
+            </div>
+
+            <div class="chart-card">
+              <h3>Women Candidates vs Elected (2024)</h3>
+              <div id="chart-women" aria-label="Bar chart comparing women candidates to women elected"></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script src="app.js"></script>
   <script>
     function googleTranslateElementInit() {

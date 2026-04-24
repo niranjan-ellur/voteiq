@@ -178,6 +178,8 @@ function showTab(tab) {
   const navBtn = document.getElementById(`nav-${tab}`);
   navBtn.classList.add('active');
   navBtn.setAttribute('aria-selected', 'true');
+
+  if (tab === 'stats') loadCharts();
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
@@ -388,4 +390,112 @@ function toggleCheck(i) {
   item.classList.toggle('checked', checked);
   const label = item.querySelector('.check-text').textContent;
   announce(checked ? `Marked complete: ${label}` : `Unmarked: ${label}`);
+}
+
+// ─── Google Maps ──────────────────────────────────────────────────────────────
+function searchMap() {
+  const query = document.getElementById('map-search-input').value.trim();
+  if (!query) return;
+  const encoded = encodeURIComponent(`election commission polling booth ${query} india`);
+  document.getElementById('map-iframe').src =
+    `https://maps.google.com/maps?q=${encoded}&output=embed`;
+  announce(`Searching map for polling booths in ${query}`);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('map-search-input');
+  if (input) {
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') searchMap();
+    });
+  }
+});
+
+// ─── Google Charts ────────────────────────────────────────────────────────────
+let chartsLoaded = false;
+
+function loadCharts() {
+  if (chartsLoaded) return;
+  chartsLoaded = true;
+  google.charts.load('current', { packages: ['corechart', 'bar'] });
+  google.charts.setOnLoadCallback(drawAllCharts);
+}
+
+function drawAllCharts() {
+  drawSeatsChart();
+  drawTurnoutChart();
+  drawVotersChart();
+  drawWomenChart();
+}
+
+const CHART_OPTIONS_BASE = {
+  backgroundColor: '#1a1a2e',
+  legendTextStyle: { color: '#94a3b8' },
+  titleTextStyle: { color: '#e2e8f0', fontSize: 13 },
+  hAxis: { textStyle: { color: '#94a3b8' }, gridlines: { color: '#ffffff12' } },
+  vAxis: { textStyle: { color: '#94a3b8' }, gridlines: { color: '#ffffff12' } },
+};
+
+function drawSeatsChart() {
+  const data = google.visualization.arrayToDataTable([
+    ['Alliance', 'Seats'],
+    ['NDA (BJP-led)', 293],
+    ['INDIA (Congress-led)', 234],
+    ['Others', 16],
+  ]);
+  const chart = new google.visualization.PieChart(document.getElementById('chart-seats'));
+  chart.draw(data, {
+    ...CHART_OPTIONS_BASE,
+    colors: ['#4f46e5', '#059669', '#f59e0b'],
+    pieHole: 0.4,
+    legend: { textStyle: { color: '#94a3b8' } },
+  });
+}
+
+function drawTurnoutChart() {
+  const data = google.visualization.arrayToDataTable([
+    ['Election', 'Turnout %'],
+    ['2004', 57.7],
+    ['2009', 58.2],
+    ['2014', 66.4],
+    ['2019', 67.4],
+    ['2024', 65.8],
+  ]);
+  const chart = new google.visualization.ColumnChart(document.getElementById('chart-turnout'));
+  chart.draw(data, {
+    ...CHART_OPTIONS_BASE,
+    colors: ['#818cf8'],
+    legend: { position: 'none' },
+  });
+}
+
+function drawVotersChart() {
+  const data = google.visualization.arrayToDataTable([
+    ['Year', 'Registered Voters (Crores)'],
+    ['2004', 67.1],
+    ['2009', 71.4],
+    ['2014', 83.4],
+    ['2019', 91.2],
+    ['2024', 96.8],
+  ]);
+  const chart = new google.visualization.LineChart(document.getElementById('chart-voters'));
+  chart.draw(data, {
+    ...CHART_OPTIONS_BASE,
+    colors: ['#34d399'],
+    legend: { position: 'none' },
+    curveType: 'function',
+  });
+}
+
+function drawWomenChart() {
+  const data = google.visualization.arrayToDataTable([
+    ['Category', 'Count', { role: 'style' }],
+    ['Contested', 797, '#818cf8'],
+    ['Elected', 74, '#34d399'],
+  ]);
+  const chart = new google.visualization.ColumnChart(document.getElementById('chart-women'));
+  chart.draw(data, {
+    ...CHART_OPTIONS_BASE,
+    legend: { position: 'none' },
+  });
 }
