@@ -40,6 +40,19 @@ async function handleSignOut() {
   announce('Signed out');
 }
 
+// Expose to HTML onclick handlers
+window.handleSignIn = handleSignIn;
+window.handleSignOut = handleSignOut;
+window.selectPersona = selectPersona;
+window.goHome = goHome;
+window.showTab = showTab;
+window.sendMessage = sendMessage;
+window.handleKey = handleKey;
+window.useSuggestion = useSuggestion;
+window.toggleCheck = toggleCheck;
+window.searchMap = searchMap;
+window.changeLanguage = changeLanguage;
+
 // ─── Language Setup ───────────────────────────────────────────────────────────
 async function loadLanguages() {
   try {
