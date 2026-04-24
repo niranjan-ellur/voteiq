@@ -1,0 +1,14 @@
+{
+  "name": "voteiq",
+  "version": "1.0.0",
+  "description": "Smart election intelligence assistant for Indian elections",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node -r dotenv/config server.js",
+    "test": "node --test tests/security.test.js tests/cache.test.js tests/server.test.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}

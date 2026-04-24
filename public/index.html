@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="VoteIQ — Smart, role-aware assistant for Indian election processes. Guides voters, candidates, and election officials." />
+  <meta name="theme-color" content="#0f0f1a" />
+  <title>VoteIQ — Your Election Intelligence Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- Skip navigation link for screen readers -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Live region for chat announcements -->
+  <div id="chat-live" aria-live="polite" aria-atomic="false" class="sr-only"></div>
+  <div id="status-live" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
+
+  <!-- ── SCREEN 1: Landing / Persona Selection ─────────────────────────────── -->
+  <div id="screen-landing" class="screen active" role="main" aria-label="VoteIQ — Choose your role">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <div class="landing-content">
+      <div class="logo-badge" aria-hidden="true">🗳️ VoteIQ</div>
+      <h1>Your Election<br /><span class="highlight">Intelligence Assistant</span></h1>
+      <p class="subtitle">Smart, role-aware guidance through every step of the Indian election process.</p>
+
+      <p class="choose-label" id="persona-group-label">Who are you?</p>
+      <div class="persona-cards" role="group" aria-labelledby="persona-group-label">
+
+        <button class="persona-card" onclick="selectPersona('voter')" aria-describedby="voter-desc">
+          <div class="persona-icon" aria-hidden="true">🧑‍💼</div>
+          <div class="persona-title">Voter</div>
+          <div class="persona-desc" id="voter-desc">Registration, polling booth, ID requirements, voting day guide</div>
+        </button>
+
+        <button class="persona-card" onclick="selectPersona('candidate')" aria-describedby="candidate-desc">
+          <div class="persona-icon" aria-hidden="true">🏛️</div>
+          <div class="persona-title">Candidate</div>
+          <div class="persona-desc" id="candidate-desc">Nomination filing, campaign rules, spending limits, key deadlines</div>
+        </button>
+
+        <button class="persona-card" onclick="selectPersona('official')" aria-describedby="official-desc">
+          <div class="persona-icon" aria-hidden="true">⚖️</div>
+          <div class="persona-title">Election Official</div>
+          <div class="persona-desc" id="official-desc">Duties checklist, EVM protocol, Model Code of Conduct, polling day</div>
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCREEN 2: Main App ────────────────────────────────────────────────── -->
+  <div id="screen-app" class="screen" role="application" aria-label="VoteIQ Election Assistant">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" aria-label="Navigation">
+      <div class="sidebar-top">
+        <button class="app-logo" onclick="goHome()" aria-label="VoteIQ — Go back to role selection">🗳️ VoteIQ</button>
+        <div class="persona-badge" id="persona-badge" aria-live="polite"></div>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="App sections">
+        <button class="nav-btn active" onclick="showTab('chat')" id="nav-chat"
+          aria-selected="true" role="tab" aria-controls="tab-chat">
+          <span aria-hidden="true">💬</span> Ask VoteIQ
+        </button>
+        <button class="nav-btn" onclick="showTab('timeline')" id="nav-timeline"
+          aria-selected="false" role="tab" aria-controls="tab-timeline">
+          <span aria-hidden="true">📅</span> Election Timeline
+        </button>
+        <button class="nav-btn" onclick="showTab('checklist')" id="nav-checklist"
+          aria-selected="false" role="tab" aria-controls="tab-checklist">
+          <span aria-hidden="true">✅</span> My Checklist
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="switch-btn" onclick="goHome()" aria-label="Switch to a different role">↩ Switch Role</button>
+        <div class="lang-selector-wrap" aria-label="Language selection">
+          <label for="lang-select" class="lang-label">
+            <span aria-hidden="true">🌐</span> Language
+          </label>
+          <select id="lang-select" onchange="changeLanguage(this.value)" aria-label="Select response language">
+            <option value="en">English</option>
+          </select>
+          <div class="google-translate-credit">Powered by Google Translate</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+
+      <!-- Chat Tab -->
+      <div id="tab-chat" class="tab active" role="tabpanel" aria-labelledby="nav-chat">
+        <div class="chat-header">
+          <div>
+            <div class="chat-title" id="chat-title">Ask me anything about elections</div>
+            <div class="chat-subtitle">Powered by Gemini AI</div>
+          </div>
+          <div class="gemini-badge" aria-label="AI powered by Gemini">✨ Gemini</div>
+        </div>
+
+        <div class="chat-messages" id="chat-messages" role="log" aria-label="Conversation" aria-live="off">
+          <div class="message bot-message" id="welcome-message"></div>
+        </div>
+
+        <div class="chat-suggestions" id="chat-suggestions" aria-label="Suggested questions"></div>
+
+        <div class="chat-input-area">
+          <div class="input-row">
+            <label for="user-input" class="sr-only">Type your election question</label>
+            <textarea
+              id="user-input"
+              placeholder="Ask anything about the election process..."
+              rows="2"
+              aria-label="Your question"
+              aria-multiline="true"
+              onkeydown="handleKey(event)"
+              maxlength="1000"
+            ></textarea>
+            <button class="send-btn" onclick="sendMessage()" aria-label="Send message">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" focusable="false">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+          <div class="char-count" id="char-count" aria-live="polite" aria-atomic="true"></div>
+        </div>
+      </div>
+
+      <!-- Timeline Tab -->
+      <div id="tab-timeline" class="tab" role="tabpanel" aria-labelledby="nav-timeline">
+        <div class="tab-header">
+          <h2>🗓️ Election Timeline</h2>
+          <p>Key phases and milestones of the Indian General Election</p>
+        </div>
+        <div class="timeline-container" id="timeline-container" aria-label="Election phases timeline"></div>
+      </div>
+
+      <!-- Checklist Tab -->
+      <div id="tab-checklist" class="tab" role="tabpanel" aria-labelledby="nav-checklist">
+        <div class="tab-header">
+          <h2>✅ Your Checklist</h2>
+          <p id="checklist-subtitle">Everything you need to do, step by step</p>
+        </div>
+        <div class="checklist-container" id="checklist-container" aria-label="Step-by-step checklist"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement(
+        { pageLanguage: 'en', layout: google.translate.TranslateElement.InlineLayout.SIMPLE },
+        'google_translate_element2'
+      );
+    }
+  </script>
+  <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</body>
+</html>
