@@ -1,10 +1,10 @@
 # VoteIQ — Your Election Intelligence Assistant
 
-A smart, role-aware election assistant that guides voters, candidates, and election officials through every step of the Indian election process — powered by Google AI.
+A smart, role-aware election assistant that guides voters, candidates, and election officials through every step of the Indian election process — powered by Google AI and Firebase.
 
 ## Chosen Vertical
 
-**Civic Engagement / Election Process Assistant** — helping citizens, candidates, and officials navigate the complex Indian election system with ease, in their own language.
+**Civic Engagement / Election Process Assistant** — helping citizens, candidates, and officials navigate the complex Indian election system with ease, in their own language, with persistent personalized history.
 
 ## Approach and Logic
 
@@ -21,47 +21,65 @@ Each persona loads a distinct Gemini system prompt, tailored suggestions, and a 
 
 ### Decision Flow
 ```
-User selects persona → Role-specific context loaded → Question sent to Gemini AI →
-Response optionally translated via Google Cloud Translation API →
-User sees: AI Chat + Election Timeline + Step-by-step Checklist
+User signs in with Google → Selects persona → Role-specific AI context loaded →
+Question sent to Gemini 2.5 Flash → Response translated via Google Cloud Translation API →
+Chat saved to Firestore → Analytics event tracked → User sees response
 ```
 
-## How the Solution Works
+## Features
 
-1. **Persona Selection** — Landing screen with 3 interactive role cards
-2. **AI Chat** — Powered by Gemini 2.5 Flash, maintains conversation history, response caching (5 min TTL)
-3. **Multilingual Responses** — Google Cloud Translation API translates AI responses into 11 Indian/global languages in real time
-4. **Election Timeline** — Visual 8-phase timeline of the Indian election process with status indicators
-5. **Role Checklist** — Interactive checklist tailored to each persona with ARIA accessibility
-6. **Security** — Rate limiting (20 req/min), input sanitization, CSP/XSS headers, path traversal prevention
-7. **Tested** — 17+ automated tests covering security, caching, API validation, and HTTP behaviour
+1. **Google Sign-In (Firebase Auth)** — Secure authentication, chat history tied to user account
+2. **AI Chat (Gemini 2.5 Flash)** — Role-aware responses with conversation history, response caching (5 min TTL)
+3. **Persistent Chat History (Firestore)** — Conversations saved per user per persona, reloaded on next visit
+4. **Multilingual Responses (Cloud Translation API)** — AI responses translated into 11 Indian/global languages in real time
+5. **Election Timeline** — Visual 8-phase timeline with status indicators (done/active/upcoming)
+6. **Role Checklist** — Interactive step-by-step checklist tailored to each persona
+7. **Polling Booth Finder (Google Maps)** — Search any city to find election offices and polling stations
+8. **Election Stats Dashboard (Google Charts)** — 4 live charts with real 2024 Indian election data
+9. **Google Analytics** — Tracks persona selections, questions asked, tab views
 
 ## Google Services Used
 
 | Service | How it's used |
 |---------|--------------|
-| **Gemini 2.5 Flash** | Powers all AI chat responses with role-specific system prompts |
-| **Google Cloud Translation API** | Translates AI responses into Hindi, Tamil, Telugu, Kannada, Malayalam, Marathi, Bengali, Gujarati, Punjabi, Urdu |
+| **Gemini 2.5 Flash** | Powers all AI chat with role-specific system prompts and conversation history |
+| **Firebase Authentication** | Google Sign-In — secure user identity |
+| **Cloud Firestore** | Persists chat history per user per persona |
+| **Google Analytics (Firebase)** | Tracks user events: persona selection, questions, tab views |
+| **Cloud Translation API** | Translates AI responses into 11 languages server-side |
+| **Google Maps Embed** | Polling booth and election office finder by city |
+| **Google Charts** | Election statistics: seat distribution, turnout trends, voter growth, women candidates |
 | **Google Cloud Run** | Hosts the containerised Node.js application |
-| **Google Fonts** | Inter typeface for clean, readable UI |
+| **Google Fonts** | Inter typeface for clean, accessible typography |
+
+## Security
+
+- Rate limiting (20 requests/minute per IP)
+- Input sanitization (XSS prevention, length limits)
+- Security headers (CSP, X-Frame-Options, X-XSS-Protection, nosniff, Referrer-Policy)
+- Path traversal prevention on static file serving
+- Firestore Security Rules — users can only read/write their own chat data
+- API keys stored as server-side environment variables only
 
 ## Assumptions
 
-- Gemini API key is set as `GEMINI_API_KEY` environment variable (same key works for Translation API)
+- `GEMINI_API_KEY` from Google AI Studio powers Gemini chat
+- `TRANSLATE_API_KEY` from GCP Console powers Cloud Translation API (same project `voteiq-494318`)
 - Election context is the **Indian General Election** (Lok Sabha / State Assembly)
 - Timeline phases are illustrative of the standard ECI election schedule
-- Translation API uses the same GCP project key — enable "Cloud Translation API" in your GCP console
 
 ## How to Run Locally
 
 ```bash
-# 1. Set your API key in .env
-echo "GEMINI_API_KEY=your_key_here" > .env
+# 1. Set your API keys in .env
+GEMINI_API_KEY=your_gemini_key
+TRANSLATE_API_KEY=your_gcp_key
+PORT=8080
 
 # 2. Install dependencies
 npm install
 
-# 3. Run
+# 3. Run dev server
 npm run dev
 ```
 
@@ -73,6 +91,8 @@ Open `http://localhost:8080`
 npm test
 ```
 
+Tests cover: input sanitization, payload validation, response caching, HTTP endpoints, security headers, path traversal prevention.
+
 ## How to Deploy on Cloud Run
 
 ```bash
@@ -81,29 +101,32 @@ gcloud run deploy voteiq \
   --source . \
   --region asia-south1 \
   --allow-unauthenticated \
-  --set-env-vars GEMINI_API_KEY=your_key_here
+  --set-env-vars GEMINI_API_KEY=your_key,TRANSLATE_API_KEY=your_key
 ```
 
 ## Project Structure
 
 ```
 election/
-├── public/                 # Frontend (HTML, CSS, JS)
-│   ├── index.html          # Accessible app shell with ARIA roles
-│   ├── app.js              # UI logic, chat, timeline, checklist, language
-│   └── style.css           # Dark theme, responsive, focus styles
+├── public/                 # Frontend (served statically)
+│   ├── index.html          # Accessible app shell with ARIA roles, skip links
+│   ├── app.js              # UI logic: chat, timeline, checklist, maps, charts, auth
+│   ├── firebase.js         # Firebase SDK: Auth, Firestore, Analytics
+│   └── style.css           # Dark theme, responsive, focus styles, animations
 ├── src/                    # Backend modules
 │   ├── config.js           # Centralised configuration
-│   ├── security.js         # Rate limiting, sanitization, security headers
-│   ├── cache.js            # LRU response cache (5 min TTL)
-│   ├── gemini.js           # Gemini API client with system prompts
+│   ├── security.js         # Rate limiting, input sanitization, security headers
+│   ├── cache.js            # LRU response cache (5 min TTL, 100 entry limit)
+│   ├── gemini.js           # Gemini 2.5 Flash API client with system prompts
 │   ├── translate.js        # Google Cloud Translation API client
-│   └── router.js           # Request routing and validation
-├── tests/                  # Automated test suite
-│   ├── security.test.js    # Input sanitization and validation tests
-│   ├── cache.test.js       # Cache behaviour tests
-│   └── server.test.js      # HTTP integration tests
-├── server.js               # Entry point, static serving, security headers
+│   └── router.js           # Request routing, validation, translation orchestration
+├── tests/                  # Automated test suite (Node built-in test runner)
+│   ├── security.test.js    # Input sanitization and payload validation tests
+│   ├── cache.test.js       # Cache behaviour and TTL tests
+│   └── server.test.js      # HTTP integration tests (endpoints, headers, static serving)
+├── server.js               # Entry point: HTTP server, static files, routing
+├── firestore.rules         # Firestore security rules
+├── .eslintrc.json          # ESLint configuration
 ├── package.json
 ├── Dockerfile              # Cloud Run container (node:20-alpine)
 └── README.md
