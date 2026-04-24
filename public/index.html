@@ -26,6 +26,21 @@
       <h1>Your Election<br /><span class="highlight">Intelligence Assistant</span></h1>
       <p class="subtitle">Smart, role-aware guidance through every step of the Indian election process.</p>
 
+      <div class="auth-bar" id="auth-bar">
+        <div id="auth-signed-out">
+          <button class="google-signin-btn" onclick="handleSignIn()" aria-label="Sign in with Google">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18" alt="" aria-hidden="true" />
+            Sign in with Google
+          </button>
+          <span class="auth-hint">Sign in to save your chat history</span>
+        </div>
+        <div id="auth-signed-in" style="display:none">
+          <img id="auth-avatar" src="" width="28" height="28" alt="Profile photo" class="auth-avatar" />
+          <span id="auth-name" class="auth-name"></span>
+          <button class="auth-signout-btn" onclick="handleSignOut()" aria-label="Sign out">Sign out</button>
+        </div>
+      </div>
+
       <p class="choose-label" id="persona-group-label">Who are you?</p>
       <div class="persona-cards" role="group" aria-labelledby="persona-group-label">
 
@@ -227,6 +242,7 @@
   </div>
 
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script type="module" src="firebase.js"></script>
   <script src="app.js"></script>
   <script>
     function googleTranslateElementInit() {

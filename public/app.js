@@ -6,6 +6,39 @@ let chatHistory = [];
 let sendDebounceTimer = null;
 let isSending = false;
 let currentLang = 'en';
+let currentUser = null;
+
+// ─── Firebase Bridge (loaded as ES module) ────────────────────────────────────
+// firebase.js sets these on window so the non-module app.js can access them
+function fbSaveMessage(...args) { return window.fb?.saveMessage(...args); }
+function fbLoadHistory(...args) { return window.fb?.loadChatHistory(...args); }
+function fbTrack(...args) { return window.fb?.trackEvent(...args); }
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+window.onFirebaseAuthChange = function(user) {
+  currentUser = user;
+  if (user) {
+    document.getElementById('auth-signed-out').style.display = 'none';
+    document.getElementById('auth-signed-in').style.display = 'flex';
+    document.getElementById('auth-name').textContent = user.displayName || user.email;
+    const avatar = document.getElementById('auth-avatar');
+    if (user.photoURL) { avatar.src = user.photoURL; avatar.style.display = 'block'; }
+  } else {
+    document.getElementById('auth-signed-out').style.display = 'flex';
+    document.getElementById('auth-signed-in').style.display = 'none';
+  }
+};
+
+async function handleSignIn() {
+  const user = await window.fb?.signInWithGoogle();
+  if (user) announce(`Signed in as ${user.displayName}`);
+}
+
+async function handleSignOut() {
+  await window.fb?.signOutUser();
+  currentUser = null;
+  announce('Signed out');
+}
 
 // ─── Language Setup ───────────────────────────────────────────────────────────
 async function loadLanguages() {
@@ -142,6 +175,23 @@ function selectPersona(persona) {
   renderTimeline();
   showTab('chat');
 
+  // Track persona selection
+  fbTrack('select_persona', { persona });
+
+  // Load Firestore history if signed in
+  if (currentUser) {
+    fbLoadHistory(currentUser.uid, persona).then(history => {
+      if (history.length > 0) {
+        chatHistory = history.slice(-20);
+        history.slice(-6).forEach(h => {
+          if (h.role === 'user') addUserMessage(h.text);
+          else addBotMessage(h.text);
+        });
+        announce('Previous conversation loaded');
+      }
+    });
+  }
+
   // Move focus to the textarea
   setTimeout(() => document.getElementById('user-input').focus(), 100);
 }
@@ -180,6 +230,7 @@ function showTab(tab) {
   navBtn.setAttribute('aria-selected', 'true');
 
   if (tab === 'stats') loadCharts();
+  fbTrack('tab_view', { tab });
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
@@ -247,6 +298,15 @@ async function sendMessage() {
     chatHistory.push({ role: 'user', text });
     chatHistory.push({ role: 'model', text: englishReply });
     if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+
+    // Persist to Firestore if signed in
+    if (currentUser) {
+      fbSaveMessage(currentUser.uid, currentPersona, 'user', text);
+      fbSaveMessage(currentUser.uid, currentPersona, 'model', englishReply);
+    }
+
+    // Track question asked
+    fbTrack('question_asked', { persona: currentPersona, lang: currentLang });
 
   } catch (err) {
     removeMessage(loadingId);
