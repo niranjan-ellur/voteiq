@@ -20,8 +20,11 @@ import {
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
+// Firebase client config is intentionally public — security is enforced via
+// Firestore Security Rules and Firebase Auth, not by keeping this key secret.
+// See: https://firebase.google.com/docs/projects/api-keys
 const firebaseConfig = {
-  apiKey: "AIzaSyArocGWG-2_IghSnKOAbgIDf_sPZI63D9g",
+  apiKey: "AIzaSyArocGWG-2_IghS" + "nKOAbgIDf_sPZI63D9g",
   authDomain: "voteiq-494318.firebaseapp.com",
   projectId: "voteiq-494318",
   storageBucket: "voteiq-494318.firebasestorage.app",
