@@ -8,72 +8,45 @@ let isSending = false;
 let currentLang = 'en';
 let currentUser = null;
 
-// ─── Firebase Bridge (loaded as ES module) ────────────────────────────────────
-// firebase.js sets these on window so the non-module app.js can access them
-function fbSaveMessage(...args) { return window.fb?.saveMessage(...args); }
-function fbLoadHistory(...args) { return window.fb?.loadChatHistory(...args); }
-function fbTrack(...args) { return window.fb?.trackEvent(...args); }
+// ─── Firebase helpers (exposed by firebase.js via window.firebase_api) ────────
+const fb = {
+  signIn: () => window.firebase_api?.signInWithGoogle(),
+  signOut: () => window.firebase_api?.signOutUser(),
+  track: (name, params) => window.firebase_api?.trackEvent(name, params),
+  save: (uid, persona, role, text) => window.firebase_api?.saveMessage(uid, persona, role, text),
+  load: (uid, persona) => window.firebase_api?.loadChatHistory(uid, persona),
+};
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
-window.onFirebaseAuthChange = function(user) {
+// ─── Auth state ───────────────────────────────────────────────────────────────
+document.addEventListener('firebase:authchange', ({ detail: { user } }) => {
   currentUser = user;
+  const signedOut = document.getElementById('auth-signed-out');
+  const signedIn = document.getElementById('auth-signed-in');
   if (user) {
-    document.getElementById('auth-signed-out').style.display = 'none';
-    document.getElementById('auth-signed-in').style.display = 'flex';
+    signedOut.style.display = 'none';
+    signedIn.style.display = 'flex';
     document.getElementById('auth-name').textContent = user.displayName || user.email;
     const avatar = document.getElementById('auth-avatar');
     if (user.photoURL) { avatar.src = user.photoURL; avatar.style.display = 'block'; }
   } else {
-    document.getElementById('auth-signed-out').style.display = 'flex';
-    document.getElementById('auth-signed-in').style.display = 'none';
+    signedOut.style.display = 'flex';
+    signedIn.style.display = 'none';
   }
-};
-
-async function handleSignIn() {
-  const user = await window.fb?.signInWithGoogle();
-  if (user) announce(`Signed in as ${user.displayName}`);
-}
-
-async function handleSignOut() {
-  await window.fb?.signOutUser();
-  currentUser = null;
-  announce('Signed out');
-}
-
-// Expose to HTML onclick handlers
-window.handleSignIn = handleSignIn;
-window.handleSignOut = handleSignOut;
-window.selectPersona = selectPersona;
-window.goHome = goHome;
-window.showTab = showTab;
-window.sendMessage = sendMessage;
-window.handleKey = handleKey;
-window.useSuggestion = useSuggestion;
-window.toggleCheck = toggleCheck;
-window.searchMap = searchMap;
-window.changeLanguage = changeLanguage;
+});
 
 // ─── Language Setup ───────────────────────────────────────────────────────────
 async function loadLanguages() {
   try {
     const res = await fetch('/api/languages');
-    const data = await res.json();
+    const { languages } = await res.json();
     const select = document.getElementById('lang-select');
-    select.innerHTML = Object.entries(data.languages)
+    select.innerHTML = Object.entries(languages)
       .map(([code, name]) => `<option value="${code}">${name}</option>`)
       .join('');
   } catch {
-    // fallback — keep the English-only option
+    // Keep English-only fallback option
   }
 }
-
-function changeLanguage(lang) {
-  currentLang = lang;
-  const label = document.getElementById('lang-select').selectedOptions[0]?.text || lang;
-  announce(`Language changed to ${label}`);
-}
-
-loadLanguages();
 
 // ─── Persona Data ─────────────────────────────────────────────────────────────
 const PERSONAS = {
@@ -188,12 +161,10 @@ function selectPersona(persona) {
   renderTimeline();
   showTab('chat');
 
-  // Track persona selection
-  fbTrack('select_persona', { persona });
+  fb.track('select_persona', { persona });
 
-  // Load Firestore history if signed in
   if (currentUser) {
-    fbLoadHistory(currentUser.uid, persona).then(history => {
+    fb.load(currentUser.uid, persona).then(history => {
       if (history.length > 0) {
         chatHistory = history.slice(-20);
         history.slice(-6).forEach(h => {
@@ -205,7 +176,6 @@ function selectPersona(persona) {
     });
   }
 
-  // Move focus to the textarea
   setTimeout(() => document.getElementById('user-input').focus(), 100);
 }
 
@@ -220,7 +190,6 @@ function goHome() {
   chatHistory = [];
   currentPersona = null;
 
-  // Return focus to first persona card
   setTimeout(() => document.querySelector('.persona-card').focus(), 100);
 }
 
@@ -234,37 +203,21 @@ function showTab(tab) {
     b.setAttribute('aria-selected', 'false');
   });
 
-  const tabEl = document.getElementById(`tab-${tab}`);
-  tabEl.classList.add('active');
-  tabEl.removeAttribute('aria-hidden');
-
-  const navBtn = document.getElementById(`nav-${tab}`);
-  navBtn.classList.add('active');
-  navBtn.setAttribute('aria-selected', 'true');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  document.getElementById(`tab-${tab}`).removeAttribute('aria-hidden');
+  document.getElementById(`nav-${tab}`).classList.add('active');
+  document.getElementById(`nav-${tab}`).setAttribute('aria-selected', 'true');
 
   if (tab === 'stats') loadCharts();
-  fbTrack('tab_view', { tab });
+  fb.track('tab_view', { tab });
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    debouncedSend();
-  }
-  updateCharCount();
-}
-
 function updateCharCount() {
   const input = document.getElementById('user-input');
-  const count = input.value.length;
   const el = document.getElementById('char-count');
+  const count = input.value.length;
   el.textContent = count > 900 ? `${count}/1000 characters` : '';
-}
-
-function debouncedSend() {
-  clearTimeout(sendDebounceTimer);
-  sendDebounceTimer = setTimeout(sendMessage, 300);
 }
 
 async function sendMessage() {
@@ -285,12 +238,7 @@ async function sendMessage() {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        persona: currentPersona,
-        message: text,
-        history: chatHistory,
-        lang: currentLang,
-      }),
+      body: JSON.stringify({ persona: currentPersona, message: text, history: chatHistory, lang: currentLang }),
     });
 
     const data = await res.json();
@@ -304,7 +252,7 @@ async function sendMessage() {
     }
 
     const reply = data.reply || 'No response received.';
-    const englishReply = data.englishReply || reply; // always English for history
+    const englishReply = data.englishReply || reply;
     addBotMessage(reply, data.translated ? currentLang : null);
     announce('New response received');
 
@@ -312,14 +260,12 @@ async function sendMessage() {
     chatHistory.push({ role: 'model', text: englishReply });
     if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
 
-    // Persist to Firestore if signed in
     if (currentUser) {
-      fbSaveMessage(currentUser.uid, currentPersona, 'user', text);
-      fbSaveMessage(currentUser.uid, currentPersona, 'model', englishReply);
+      fb.save(currentUser.uid, currentPersona, 'user', text);
+      fb.save(currentUser.uid, currentPersona, 'model', englishReply);
     }
 
-    // Track question asked
-    fbTrack('question_asked', { persona: currentPersona, lang: currentLang });
+    fb.track('question_asked', { persona: currentPersona, lang: currentLang });
 
   } catch (err) {
     removeMessage(loadingId);
@@ -351,8 +297,8 @@ function addBotMessage(text, translatedLang) {
   if (translatedLang) {
     const badge = document.createElement('div');
     badge.className = 'translate-badge';
-    badge.setAttribute('aria-label', `Translated using Google Translate`);
-    badge.innerHTML = `<span aria-hidden="true">🌐</span> Translated via Google Translate`;
+    badge.setAttribute('aria-label', 'Translated using Google Translate');
+    badge.innerHTML = '<span aria-hidden="true">🌐</span> Translated via Google Translate';
     div.appendChild(badge);
   }
   document.getElementById('chat-messages').appendChild(div);
@@ -388,39 +334,45 @@ function announce(msg, assertive = false) {
 }
 
 function formatMessage(text) {
+  // Escape HTML first, then apply safe markdown-like formatting
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/•\s(.+)/g, '<li>$1</li>')
-    .replace(/(<li>[\s\S]*?<\/li>)/g, match => `<ul>${match}</ul>`)
+    .replace(/(<li>.*?<\/li>(\n|$))+/g, match => `<ul>${match}</ul>`)
     .replace(/\n/g, '<br/>');
 }
 
 function renderSuggestions(suggestions) {
   const container = document.getElementById('chat-suggestions');
-  container.innerHTML = suggestions.map(s =>
-    `<button class="suggestion-chip" onclick="useSuggestion(this)" aria-label="Ask: ${s}">${s}</button>`
-  ).join('');
+  container.innerHTML = '';
+  suggestions.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'suggestion-chip';
+    btn.setAttribute('aria-label', `Ask: ${s}`);
+    btn.textContent = s;
+    btn.addEventListener('click', () => {
+      document.getElementById('user-input').value = s;
+      sendMessage();
+    });
+    container.appendChild(btn);
+  });
   container.style.display = 'flex';
 }
 
 function hideSuggestions() {
-  const el = document.getElementById('chat-suggestions');
-  el.style.display = 'none';
-}
-
-function useSuggestion(btn) {
-  const text = btn.textContent;
-  document.getElementById('user-input').value = text;
-  sendMessage();
+  document.getElementById('chat-suggestions').style.display = 'none';
 }
 
 // ─── Timeline ─────────────────────────────────────────────────────────────────
 function renderTimeline() {
   const container = document.getElementById('timeline-container');
+  container.setAttribute('role', 'list');
   container.innerHTML = TIMELINE.map((item, i) => `
     <div class="timeline-item ${item.status}" role="listitem">
       <div class="timeline-connector" aria-hidden="true">
@@ -439,50 +391,41 @@ function renderTimeline() {
       </div>
     </div>
   `).join('');
-  container.setAttribute('role', 'list');
 }
 
 // ─── Checklist ────────────────────────────────────────────────────────────────
 function renderChecklist(items) {
   const container = document.getElementById('checklist-container');
-  container.innerHTML = items.map((item, i) => `
-    <div class="checklist-item" id="check-${i}">
+  container.innerHTML = '';
+  items.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'checklist-item';
+    div.id = `check-${i}`;
+    div.innerHTML = `
       <label class="check-label">
-        <input type="checkbox" id="checkbox-${i}" onchange="toggleCheck(${i})" aria-describedby="check-text-${i}" />
+        <input type="checkbox" id="checkbox-${i}" aria-describedby="check-text-${i}" />
         <span class="checkmark" aria-hidden="true"></span>
         <span class="check-text" id="check-text-${i}">${item.text}</span>
       </label>
       ${item.link ? `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="check-link" aria-label="Open: ${item.text}">↗ Check</a>` : ''}
-    </div>
-  `).join('');
-}
-
-function toggleCheck(i) {
-  const item = document.getElementById(`check-${i}`);
-  const checked = document.getElementById(`checkbox-${i}`).checked;
-  item.classList.toggle('checked', checked);
-  const label = item.querySelector('.check-text').textContent;
-  announce(checked ? `Marked complete: ${label}` : `Unmarked: ${label}`);
+    `;
+    div.querySelector('input').addEventListener('change', () => {
+      const checked = div.querySelector('input').checked;
+      div.classList.toggle('checked', checked);
+      announce(checked ? `Marked complete: ${item.text}` : `Unmarked: ${item.text}`);
+    });
+    container.appendChild(div);
+  });
 }
 
 // ─── Google Maps ──────────────────────────────────────────────────────────────
 function searchMap() {
   const query = document.getElementById('map-search-input').value.trim();
   if (!query) return;
-  const encoded = encodeURIComponent(`election commission polling booth ${query} india`);
-  document.getElementById('map-iframe').src =
-    `https://maps.google.com/maps?q=${encoded}&output=embed`;
+  const encoded = encodeURIComponent(`polling booth ${query} india`);
+  document.getElementById('map-iframe').src = `https://www.google.com/maps/embed/v1/search?key=AIzaSyArocGWG-2_IghSnKOAbgIDf_sPZI63D9g&q=${encoded}`;
   announce(`Searching map for polling booths in ${query}`);
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  const input = document.getElementById('map-search-input');
-  if (input) {
-    input.addEventListener('keydown', e => {
-      if (e.key === 'Enter') searchMap();
-    });
-  }
-});
 
 // ─── Google Charts ────────────────────────────────────────────────────────────
 let chartsLoaded = false;
@@ -490,7 +433,7 @@ let chartsLoaded = false;
 function loadCharts() {
   if (chartsLoaded) return;
   chartsLoaded = true;
-  google.charts.load('current', { packages: ['corechart', 'bar'] });
+  google.charts.load('current', { packages: ['corechart'] });
   google.charts.setOnLoadCallback(drawAllCharts);
 }
 
@@ -501,7 +444,7 @@ function drawAllCharts() {
   drawWomenChart();
 }
 
-const CHART_OPTIONS_BASE = {
+const CHART_THEME = {
   backgroundColor: '#1a1a2e',
   legendTextStyle: { color: '#94a3b8' },
   titleTextStyle: { color: '#e2e8f0', fontSize: 13 },
@@ -516,11 +459,8 @@ function drawSeatsChart() {
     ['INDIA (Congress-led)', 234],
     ['Others', 16],
   ]);
-  const chart = new google.visualization.PieChart(document.getElementById('chart-seats'));
-  chart.draw(data, {
-    ...CHART_OPTIONS_BASE,
-    colors: ['#4f46e5', '#059669', '#f59e0b'],
-    pieHole: 0.4,
+  new google.visualization.PieChart(document.getElementById('chart-seats')).draw(data, {
+    ...CHART_THEME, colors: ['#4f46e5', '#059669', '#f59e0b'], pieHole: 0.4,
     legend: { textStyle: { color: '#94a3b8' } },
   });
 }
@@ -528,35 +468,20 @@ function drawSeatsChart() {
 function drawTurnoutChart() {
   const data = google.visualization.arrayToDataTable([
     ['Election', 'Turnout %'],
-    ['2004', 57.7],
-    ['2009', 58.2],
-    ['2014', 66.4],
-    ['2019', 67.4],
-    ['2024', 65.8],
+    ['2004', 57.7], ['2009', 58.2], ['2014', 66.4], ['2019', 67.4], ['2024', 65.8],
   ]);
-  const chart = new google.visualization.ColumnChart(document.getElementById('chart-turnout'));
-  chart.draw(data, {
-    ...CHART_OPTIONS_BASE,
-    colors: ['#818cf8'],
-    legend: { position: 'none' },
+  new google.visualization.ColumnChart(document.getElementById('chart-turnout')).draw(data, {
+    ...CHART_THEME, colors: ['#818cf8'], legend: { position: 'none' },
   });
 }
 
 function drawVotersChart() {
   const data = google.visualization.arrayToDataTable([
     ['Year', 'Registered Voters (Crores)'],
-    ['2004', 67.1],
-    ['2009', 71.4],
-    ['2014', 83.4],
-    ['2019', 91.2],
-    ['2024', 96.8],
+    ['2004', 67.1], ['2009', 71.4], ['2014', 83.4], ['2019', 91.2], ['2024', 96.8],
   ]);
-  const chart = new google.visualization.LineChart(document.getElementById('chart-voters'));
-  chart.draw(data, {
-    ...CHART_OPTIONS_BASE,
-    colors: ['#34d399'],
-    legend: { position: 'none' },
-    curveType: 'function',
+  new google.visualization.LineChart(document.getElementById('chart-voters')).draw(data, {
+    ...CHART_THEME, colors: ['#34d399'], legend: { position: 'none' }, curveType: 'function',
   });
 }
 
@@ -566,9 +491,58 @@ function drawWomenChart() {
     ['Contested', 797, '#818cf8'],
     ['Elected', 74, '#34d399'],
   ]);
-  const chart = new google.visualization.ColumnChart(document.getElementById('chart-women'));
-  chart.draw(data, {
-    ...CHART_OPTIONS_BASE,
-    legend: { position: 'none' },
+  new google.visualization.ColumnChart(document.getElementById('chart-women')).draw(data, {
+    ...CHART_THEME, legend: { position: 'none' },
   });
 }
+
+// ─── Event Listeners (replaces all inline onclick attributes) ─────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  loadLanguages();
+
+  // Auth
+  document.getElementById('btn-signin').addEventListener('click', () => fb.signIn());
+  document.getElementById('btn-signout').addEventListener('click', () => {
+    fb.signOut();
+    currentUser = null;
+    announce('Signed out');
+  });
+
+  // Persona cards
+  document.querySelectorAll('.persona-card').forEach(card => {
+    card.addEventListener('click', () => selectPersona(card.dataset.persona));
+  });
+
+  // Logo / go home
+  document.getElementById('btn-home').addEventListener('click', goHome);
+  document.getElementById('btn-switch-role').addEventListener('click', goHome);
+
+  // Nav tabs
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => showTab(btn.dataset.tab));
+  });
+
+  // Chat input
+  const userInput = document.getElementById('user-input');
+  userInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      clearTimeout(sendDebounceTimer);
+      sendDebounceTimer = setTimeout(sendMessage, 300);
+    }
+    updateCharCount();
+  });
+  document.getElementById('btn-send').addEventListener('click', sendMessage);
+
+  // Language selector
+  document.getElementById('lang-select').addEventListener('change', e => {
+    currentLang = e.target.value;
+    const label = e.target.selectedOptions[0]?.text || currentLang;
+    announce(`Language changed to ${label}`);
+  });
+
+  // Map search
+  const mapInput = document.getElementById('map-search-input');
+  mapInput.addEventListener('keydown', e => { if (e.key === 'Enter') searchMap(); });
+  document.getElementById('btn-map-search').addEventListener('click', searchMap);
+});

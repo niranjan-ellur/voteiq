@@ -57,9 +57,11 @@ Chat saved to Firestore → Analytics event tracked → User sees response
 - Rate limiting (20 requests/minute per IP)
 - Input sanitization (XSS prevention, length limits)
 - Security headers (CSP, X-Frame-Options, X-XSS-Protection, nosniff, Referrer-Policy)
-- Path traversal prevention on static file serving
-- Firestore Security Rules — users can only read/write their own chat data
-- API keys stored as server-side environment variables only
+- Path traversal prevention (`path.resolve()` with strict prefix check)
+- CORS restricted to the deployed Cloud Run origin
+- **Firebase Admin SDK server-side** — Firestore reads/writes happen on the server; the client never touches Firestore directly. ID tokens are verified server-side via `admin.auth().verifyIdToken()`
+- Firestore Security Rules — defence-in-depth: users can only read/write their own chat data
+- All API keys and service account credentials stored as server-side environment variables only — nothing secret appears in client code
 
 ## Assumptions
 
@@ -76,10 +78,15 @@ GEMINI_API_KEY=your_gemini_key
 TRANSLATE_API_KEY=your_gcp_key
 PORT=8080
 
-# 2. Install dependencies
+# 2. Set Firebase Admin credentials in .env (from Firebase Console → Service Accounts)
+FIREBASE_PROJECT_ID=voteiq-494318
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@voteiq-494318.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+
+# 3. Install dependencies
 npm install
 
-# 3. Run dev server
+# 4. Run dev server
 npm run dev
 ```
 
@@ -101,7 +108,7 @@ gcloud run deploy voteiq \
   --source . \
   --region asia-south1 \
   --allow-unauthenticated \
-  --set-env-vars GEMINI_API_KEY=your_key,TRANSLATE_API_KEY=your_key
+  --set-env-vars "GEMINI_API_KEY=your_key,TRANSLATE_API_KEY=your_key,FIREBASE_PROJECT_ID=voteiq-494318,FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@voteiq-494318.iam.gserviceaccount.com,FIREBASE_PRIVATE_KEY=your_private_key,ALLOWED_ORIGIN=https://voteiq-<hash>-el.a.run.app"
 ```
 
 ## Project Structure

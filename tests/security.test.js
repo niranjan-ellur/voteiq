@@ -9,8 +9,20 @@ describe('sanitizeInput', () => {
     assert.equal(sanitizeInput('  hello  '), 'hello');
   });
 
-  it('strips angle brackets', () => {
-    assert.equal(sanitizeInput('<script>alert(1)</script>'), 'scriptalert(1)/script');
+  it('escapes angle brackets to prevent XSS', () => {
+    assert.equal(sanitizeInput('<script>alert(1)</script>'), '&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
+  it('escapes ampersands', () => {
+    assert.equal(sanitizeInput('a & b'), 'a &amp; b');
+  });
+
+  it('escapes double quotes', () => {
+    assert.equal(sanitizeInput('"hello"'), '&quot;hello&quot;');
+  });
+
+  it('escapes single quotes', () => {
+    assert.equal(sanitizeInput("it's"), 'it&#x27;s');
   });
 
   it('truncates to maxInputLength', () => {
@@ -22,6 +34,10 @@ describe('sanitizeInput', () => {
     assert.equal(sanitizeInput(null), '');
     assert.equal(sanitizeInput(undefined), '');
     assert.equal(sanitizeInput(123), '');
+  });
+
+  it('returns empty string for object input', () => {
+    assert.equal(sanitizeInput({}), '');
   });
 });
 
@@ -36,11 +52,20 @@ describe('validateChatPayload', () => {
     assert.ok(validateChatPayload(null));
   });
 
+  it('rejects non-object payload', () => {
+    assert.ok(validateChatPayload('string'));
+    assert.ok(validateChatPayload(42));
+  });
+
   it('rejects invalid persona', () => {
     assert.ok(validateChatPayload({ ...valid, persona: 'hacker' }));
   });
 
-  it('rejects all valid personas individually', () => {
+  it('rejects missing persona', () => {
+    assert.ok(validateChatPayload({ ...valid, persona: undefined }));
+  });
+
+  it('accepts all valid personas', () => {
     for (const p of ['voter', 'candidate', 'official']) {
       assert.equal(validateChatPayload({ ...valid, persona: p }), null);
     }
@@ -54,12 +79,22 @@ describe('validateChatPayload', () => {
     assert.ok(validateChatPayload({ ...valid, message: undefined }));
   });
 
+  it('rejects non-string message', () => {
+    assert.ok(validateChatPayload({ ...valid, message: 123 }));
+  });
+
   it('rejects non-array history', () => {
     assert.ok(validateChatPayload({ ...valid, history: 'bad' }));
+    assert.ok(validateChatPayload({ ...valid, history: null }));
   });
 
   it('rejects history over 40 entries', () => {
     const longHistory = Array.from({ length: 41 }, (_, i) => ({ role: 'user', text: `msg ${i}` }));
     assert.ok(validateChatPayload({ ...valid, history: longHistory }));
+  });
+
+  it('accepts history with exactly 40 entries', () => {
+    const maxHistory = Array.from({ length: 40 }, (_, i) => ({ role: 'user', text: `msg ${i}` }));
+    assert.equal(validateChatPayload({ ...valid, history: maxHistory }), null);
   });
 });

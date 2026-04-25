@@ -12,101 +12,129 @@
 </head>
 <body>
 
-  <!-- Skip navigation link for screen readers -->
   <a href="#main-content" class="skip-link">Skip to main content</a>
-
-  <!-- Live region for chat announcements -->
   <div id="chat-live" aria-live="polite" aria-atomic="false" class="sr-only"></div>
   <div id="status-live" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
 
-  <!-- ── SCREEN 1: Landing / Persona Selection ─────────────────────────────── -->
+  <!-- ── SCREEN 1: Landing ────────────────────────────────────────────────── -->
   <div id="screen-landing" class="screen active" role="main" aria-label="VoteIQ — Choose your role">
     <div class="landing-bg" aria-hidden="true"></div>
-    <div class="landing-content">
-      <div class="logo-badge" aria-hidden="true">🗳️ VoteIQ</div>
-      <h1>Your Election<br /><span class="highlight">Intelligence Assistant</span></h1>
-      <p class="subtitle">Smart, role-aware guidance through every step of the Indian election process.</p>
 
-      <div class="auth-bar" id="auth-bar">
-        <div id="auth-signed-out">
-          <button class="google-signin-btn" onclick="handleSignIn()" aria-label="Sign in with Google">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18" alt="" aria-hidden="true" />
-            Sign in with Google
+    <div class="landing-grid">
+
+      <!-- Left column: branding + stats -->
+      <div class="landing-left">
+        <div class="logo-badge" aria-hidden="true">🗳️ VoteIQ</div>
+        <h1>Your Election<br /><span class="highlight">Intelligence<br/>Assistant</span></h1>
+        <p class="subtitle">Smart, role-aware AI guidance through every step of the Indian election process.</p>
+
+        <div class="landing-stats" aria-label="Election facts">
+          <div class="lstat">
+            <div class="lstat-num">946M</div>
+            <div class="lstat-label">Registered Voters</div>
+          </div>
+          <div class="lstat-divider"></div>
+          <div class="lstat">
+            <div class="lstat-num">543</div>
+            <div class="lstat-label">Lok Sabha Seats</div>
+          </div>
+          <div class="lstat-divider"></div>
+          <div class="lstat">
+            <div class="lstat-num">7</div>
+            <div class="lstat-label">Election Phases</div>
+          </div>
+        </div>
+
+        <div class="auth-bar">
+          <div id="auth-signed-out">
+            <button id="btn-signin" class="google-signin-btn" aria-label="Sign in with Google">
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18" alt="" aria-hidden="true" />
+              Sign in with Google
+            </button>
+            <span class="auth-hint">Save your chat history</span>
+          </div>
+          <div id="auth-signed-in" style="display:none">
+            <img id="auth-avatar" src="" width="32" height="32" alt="Profile photo" class="auth-avatar" />
+            <span id="auth-name" class="auth-name"></span>
+            <button id="btn-signout" class="auth-signout-btn" aria-label="Sign out">Sign out</button>
+          </div>
+        </div>
+
+        <div class="landing-powered">✨ Powered by Gemini AI &nbsp;·&nbsp; Google Services</div>
+      </div>
+
+      <!-- Right column: role cards -->
+      <div class="landing-right">
+        <p class="choose-label" id="persona-group-label">I am a...</p>
+        <div class="persona-cards" role="group" aria-labelledby="persona-group-label">
+          <button class="persona-card" data-persona="voter" aria-describedby="voter-desc">
+            <div class="persona-card-inner">
+              <div class="persona-icon" aria-hidden="true">🧑‍💼</div>
+              <div>
+                <div class="persona-title">Voter</div>
+                <div class="persona-desc" id="voter-desc">Registration, polling booth, valid ID, voting day guide</div>
+              </div>
+            </div>
+            <div class="persona-arrow" aria-hidden="true">→</div>
           </button>
-          <span class="auth-hint">Sign in to save your chat history</span>
-        </div>
-        <div id="auth-signed-in" style="display:none">
-          <img id="auth-avatar" src="" width="28" height="28" alt="Profile photo" class="auth-avatar" />
-          <span id="auth-name" class="auth-name"></span>
-          <button class="auth-signout-btn" onclick="handleSignOut()" aria-label="Sign out">Sign out</button>
+          <button class="persona-card" data-persona="candidate" aria-describedby="candidate-desc">
+            <div class="persona-card-inner">
+              <div class="persona-icon" aria-hidden="true">🏛️</div>
+              <div>
+                <div class="persona-title">Candidate</div>
+                <div class="persona-desc" id="candidate-desc">Nomination filing, MCC rules, spending limits, deadlines</div>
+              </div>
+            </div>
+            <div class="persona-arrow" aria-hidden="true">→</div>
+          </button>
+          <button class="persona-card" data-persona="official" aria-describedby="official-desc">
+            <div class="persona-card-inner">
+              <div class="persona-icon" aria-hidden="true">⚖️</div>
+              <div>
+                <div class="persona-title">Election Official</div>
+                <div class="persona-desc" id="official-desc">EVM protocol, duties checklist, Model Code of Conduct</div>
+              </div>
+            </div>
+            <div class="persona-arrow" aria-hidden="true">→</div>
+          </button>
         </div>
       </div>
 
-      <p class="choose-label" id="persona-group-label">Who are you?</p>
-      <div class="persona-cards" role="group" aria-labelledby="persona-group-label">
-
-        <button class="persona-card" onclick="selectPersona('voter')" aria-describedby="voter-desc">
-          <div class="persona-icon" aria-hidden="true">🧑‍💼</div>
-          <div class="persona-title">Voter</div>
-          <div class="persona-desc" id="voter-desc">Registration, polling booth, ID requirements, voting day guide</div>
-        </button>
-
-        <button class="persona-card" onclick="selectPersona('candidate')" aria-describedby="candidate-desc">
-          <div class="persona-icon" aria-hidden="true">🏛️</div>
-          <div class="persona-title">Candidate</div>
-          <div class="persona-desc" id="candidate-desc">Nomination filing, campaign rules, spending limits, key deadlines</div>
-        </button>
-
-        <button class="persona-card" onclick="selectPersona('official')" aria-describedby="official-desc">
-          <div class="persona-icon" aria-hidden="true">⚖️</div>
-          <div class="persona-title">Election Official</div>
-          <div class="persona-desc" id="official-desc">Duties checklist, EVM protocol, Model Code of Conduct, polling day</div>
-        </button>
-
-      </div>
     </div>
   </div>
 
-  <!-- ── SCREEN 2: Main App ────────────────────────────────────────────────── -->
+  <!-- ── SCREEN 2: App ─────────────────────────────────────────────────────── -->
   <div id="screen-app" class="screen" role="application" aria-label="VoteIQ Election Assistant">
 
-    <!-- Sidebar -->
     <aside class="sidebar" aria-label="Navigation">
       <div class="sidebar-top">
-        <button class="app-logo" onclick="goHome()" aria-label="VoteIQ — Go back to role selection">🗳️ VoteIQ</button>
+        <button id="btn-home" class="app-logo" aria-label="VoteIQ — Go back to role selection">🗳️ VoteIQ</button>
         <div class="persona-badge" id="persona-badge" aria-live="polite"></div>
       </div>
 
       <nav class="sidebar-nav" aria-label="App sections">
-        <button class="nav-btn active" onclick="showTab('chat')" id="nav-chat"
-          aria-selected="true" role="tab" aria-controls="tab-chat">
+        <button class="nav-btn active" id="nav-chat" data-tab="chat" aria-selected="true" role="tab" aria-controls="tab-chat">
           <span aria-hidden="true">💬</span> Ask VoteIQ
         </button>
-        <button class="nav-btn" onclick="showTab('timeline')" id="nav-timeline"
-          aria-selected="false" role="tab" aria-controls="tab-timeline">
+        <button class="nav-btn" id="nav-timeline" data-tab="timeline" aria-selected="false" role="tab" aria-controls="tab-timeline">
           <span aria-hidden="true">📅</span> Election Timeline
         </button>
-        <button class="nav-btn" onclick="showTab('checklist')" id="nav-checklist"
-          aria-selected="false" role="tab" aria-controls="tab-checklist">
+        <button class="nav-btn" id="nav-checklist" data-tab="checklist" aria-selected="false" role="tab" aria-controls="tab-checklist">
           <span aria-hidden="true">✅</span> My Checklist
         </button>
-        <button class="nav-btn" onclick="showTab('map')" id="nav-map"
-          aria-selected="false" role="tab" aria-controls="tab-map">
+        <button class="nav-btn" id="nav-map" data-tab="map" aria-selected="false" role="tab" aria-controls="tab-map">
           <span aria-hidden="true">📍</span> Find Booth
         </button>
-        <button class="nav-btn" onclick="showTab('stats')" id="nav-stats"
-          aria-selected="false" role="tab" aria-controls="tab-stats">
+        <button class="nav-btn" id="nav-stats" data-tab="stats" aria-selected="false" role="tab" aria-controls="tab-stats">
           <span aria-hidden="true">📊</span> Election Stats
         </button>
       </nav>
 
       <div class="sidebar-footer">
-        <button class="switch-btn" onclick="goHome()" aria-label="Switch to a different role">↩ Switch Role</button>
+        <button id="btn-switch-role" class="switch-btn" aria-label="Switch to a different role">↩ Switch Role</button>
         <div class="lang-selector-wrap" aria-label="Language selection">
-          <label for="lang-select" class="lang-label">
-            <span aria-hidden="true">🌐</span> Language
-          </label>
-          <select id="lang-select" onchange="changeLanguage(this.value)" aria-label="Select response language">
+          <label for="lang-select" class="lang-label"><span aria-hidden="true">🌐</span> Language</label>
+          <select id="lang-select" aria-label="Select response language">
             <option value="en">English</option>
           </select>
           <div class="google-translate-credit">Powered by Google Translate</div>
@@ -114,10 +142,9 @@
       </div>
     </aside>
 
-    <!-- Main Content -->
     <main class="main-content" id="main-content">
 
-      <!-- Chat Tab -->
+      <!-- Chat -->
       <div id="tab-chat" class="tab active" role="tabpanel" aria-labelledby="nav-chat">
         <div class="chat-header">
           <div>
@@ -126,26 +153,16 @@
           </div>
           <div class="gemini-badge" aria-label="AI powered by Gemini">✨ Gemini</div>
         </div>
-
         <div class="chat-messages" id="chat-messages" role="log" aria-label="Conversation" aria-live="off">
           <div class="message bot-message" id="welcome-message"></div>
         </div>
-
         <div class="chat-suggestions" id="chat-suggestions" aria-label="Suggested questions"></div>
-
         <div class="chat-input-area">
           <div class="input-row">
             <label for="user-input" class="sr-only">Type your election question</label>
-            <textarea
-              id="user-input"
-              placeholder="Ask anything about the election process..."
-              rows="2"
-              aria-label="Your question"
-              aria-multiline="true"
-              onkeydown="handleKey(event)"
-              maxlength="1000"
-            ></textarea>
-            <button class="send-btn" onclick="sendMessage()" aria-label="Send message">
+            <textarea id="user-input" placeholder="Ask anything about the election process..." rows="2"
+              aria-label="Your question" aria-multiline="true" maxlength="1000"></textarea>
+            <button id="btn-send" class="send-btn" aria-label="Send message">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" focusable="false">
                 <line x1="22" y1="2" x2="11" y2="13"/>
                 <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -156,7 +173,7 @@
         </div>
       </div>
 
-      <!-- Timeline Tab -->
+      <!-- Timeline -->
       <div id="tab-timeline" class="tab" role="tabpanel" aria-labelledby="nav-timeline">
         <div class="tab-header">
           <h2>🗓️ Election Timeline</h2>
@@ -165,7 +182,7 @@
         <div class="timeline-container" id="timeline-container" aria-label="Election phases timeline"></div>
       </div>
 
-      <!-- Checklist Tab -->
+      <!-- Checklist -->
       <div id="tab-checklist" class="tab" role="tabpanel" aria-labelledby="nav-checklist">
         <div class="tab-header">
           <h2>✅ Your Checklist</h2>
@@ -174,7 +191,7 @@
         <div class="checklist-container" id="checklist-container" aria-label="Step-by-step checklist"></div>
       </div>
 
-      <!-- Map Tab -->
+      <!-- Map -->
       <div id="tab-map" class="tab" role="tabpanel" aria-labelledby="nav-map">
         <div class="tab-header">
           <h2>📍 Find Your Polling Booth</h2>
@@ -184,29 +201,19 @@
           <div class="map-search-row">
             <label for="map-search-input" class="sr-only">Enter your location</label>
             <input type="text" id="map-search-input" placeholder="Enter your city or area (e.g. Bangalore, Delhi...)" aria-label="Search location for polling booth" />
-            <button onclick="searchMap()" aria-label="Search on map">Search</button>
+            <button id="btn-map-search" aria-label="Search on map">Search</button>
           </div>
           <div class="map-frame-wrap">
-            <iframe
-              id="map-iframe"
-              title="Polling booth map"
-              width="100%"
-              height="100%"
-              style="border:0;"
-              loading="lazy"
-              allowfullscreen
-              referrerpolicy="no-referrer-when-downgrade"
-              src="https://maps.google.com/maps?q=election+commission+office+india&output=embed"
-              aria-label="Google Maps showing election offices"
-            ></iframe>
+            <iframe id="map-iframe" title="Polling booth map" width="100%" height="100%" style="border:0;"
+              loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"
+              src="https://www.google.com/maps/embed/v1/search?key=AIzaSyArocGWG-2_IghSnKOAbgIDf_sPZI63D9g&q=Election+Commission+of+India+New+Delhi"
+              aria-label="Google Maps showing election offices"></iframe>
           </div>
-          <p class="map-note">
-            Powered by <strong>Google Maps</strong> · Search your city to find the nearest Election Commission office or polling station
-          </p>
+          <p class="map-note">Powered by <strong>Google Maps</strong> · Search your city to find the nearest polling station</p>
         </div>
       </div>
 
-      <!-- Stats Tab -->
+      <!-- Stats -->
       <div id="tab-stats" class="tab" role="tabpanel" aria-labelledby="nav-stats">
         <div class="tab-header">
           <h2>📊 Indian Election Statistics</h2>
@@ -214,27 +221,22 @@
         </div>
         <div class="stats-container">
           <div class="chart-grid">
-
             <div class="chart-card">
               <h3>Lok Sabha Seats by Alliance (2024)</h3>
               <div id="chart-seats" aria-label="Pie chart of Lok Sabha seat distribution 2024"></div>
             </div>
-
             <div class="chart-card">
               <h3>Voter Turnout Trend (2004–2024)</h3>
               <div id="chart-turnout" aria-label="Bar chart of voter turnout percentage over elections"></div>
             </div>
-
             <div class="chart-card">
               <h3>Registered Voters Growth (Crores)</h3>
               <div id="chart-voters" aria-label="Line chart of registered voter count growth"></div>
             </div>
-
             <div class="chart-card">
               <h3>Women Candidates vs Elected (2024)</h3>
               <div id="chart-women" aria-label="Bar chart comparing women candidates to women elected"></div>
             </div>
-
           </div>
         </div>
       </div>

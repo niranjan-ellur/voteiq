@@ -2,7 +2,7 @@
 
 const config = require('./config');
 
-// Simple LRU-style in-memory cache for Gemini responses
+const MAX_ENTRIES = 100;
 const cache = new Map();
 
 function getCacheKey(persona, message) {
@@ -17,16 +17,19 @@ function get(persona, message) {
     cache.delete(key);
     return null;
   }
+  // Move to end (LRU — most recently used)
+  cache.delete(key);
+  cache.set(key, entry);
   return entry.value;
 }
 
 function set(persona, message, value) {
-  // Keep cache under 100 entries
-  if (cache.size >= 100) {
-    const firstKey = cache.keys().next().value;
-    cache.delete(firstKey);
+  const key = getCacheKey(persona, message);
+  // Evict least recently used (first inserted entry) when at capacity
+  if (cache.size >= MAX_ENTRIES) {
+    cache.delete(cache.keys().next().value);
   }
-  cache.set(getCacheKey(persona, message), { value, timestamp: Date.now() });
+  cache.set(key, { value, timestamp: Date.now() });
 }
 
 function size() {

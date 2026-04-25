@@ -4,6 +4,10 @@ const https = require('https');
 const config = require('./config');
 const cache = require('./cache');
 
+const GEMINI_TIMEOUT_MS = 20000;
+const GEMINI_TEMPERATURE = 0.7;
+const GEMINI_MAX_TOKENS = 1024;
+
 const SYSTEM_PROMPTS = {
   voter: `You are VoteIQ, an expert Indian election assistant helping a VOTER.
 Answer questions about: voter registration (Form 6, 6A, 6B), Voter ID (EPIC card), polling booths,
@@ -33,24 +37,24 @@ Be precise, procedural, and authoritative. Reference official ECI manuals and fo
 function makeGeminiRequest(payload) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify(payload);
-    const path = `/v1beta/models/${config.geminiModel}:generateContent?key=${config.geminiApiKey}`;
+    const reqPath = `/v1beta/models/${config.geminiModel}:generateContent?key=${config.geminiApiKey}`;
 
     const options = {
       hostname: config.geminiEndpoint,
-      path,
+      path: reqPath,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
+        'Content-Length': Buffer.byteLength(body, 'utf8'),
       },
     };
 
     const req = https.request(options, res => {
-      let data = '';
-      res.on('data', chunk => { data += chunk; });
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
       res.on('end', () => {
         try {
-          resolve({ status: res.statusCode, body: JSON.parse(data) });
+          resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString('utf8')) });
         } catch {
           reject(new Error('Failed to parse Gemini response'));
         }
@@ -58,16 +62,16 @@ function makeGeminiRequest(payload) {
     });
 
     req.on('error', reject);
-    req.setTimeout(15000, () => { req.destroy(new Error('Gemini request timed out')); });
+    req.setTimeout(GEMINI_TIMEOUT_MS, () => req.destroy(new Error('Gemini request timed out')));
     req.write(body);
     req.end();
   });
 }
 
 async function chat(persona, message, history) {
-  // Check cache for identical question (only for first message, no history)
-  if (history.length === 0) {
-    const cached = cache.get(persona, message);
+  const cacheKey = history.length === 0 ? message : null;
+  if (cacheKey) {
+    const cached = cache.get(persona, cacheKey);
     if (cached) return { reply: cached, cached: true };
   }
 
@@ -79,20 +83,18 @@ async function chat(persona, message, history) {
   const payload = {
     system_instruction: { parts: [{ text: SYSTEM_PROMPTS[persona] }] },
     contents,
-    generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+    generationConfig: { temperature: GEMINI_TEMPERATURE, maxOutputTokens: GEMINI_MAX_TOKENS },
   };
 
   const { status, body } = await makeGeminiRequest(payload);
 
   if (status !== 200) {
-    const errMsg = body.error?.message || `Gemini returned status ${status}`;
-    throw new Error(errMsg);
+    throw new Error(`Gemini API error (${status})`);
   }
 
   const reply = body.candidates?.[0]?.content?.parts?.[0]?.text || 'No response received.';
 
-  // Cache first-turn answers
-  if (history.length === 0) cache.set(persona, message, reply);
+  if (cacheKey) cache.set(persona, cacheKey, reply);
 
   return { reply, cached: false };
 }

@@ -9,6 +9,7 @@
     "test": "node --test tests/security.test.js tests/cache.test.js tests/server.test.js"
   },
   "dependencies": {
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "firebase-admin": "^13.8.0"
   }
 }

@@ -3,6 +3,8 @@
 const https = require('https');
 const config = require('./config');
 
+const TRANSLATE_TIMEOUT_MS = 10000;
+
 const SUPPORTED_LANGUAGES = {
   en: 'English',
   hi: 'हिन्दी',
@@ -20,24 +22,23 @@ const SUPPORTED_LANGUAGES = {
 function callTranslateApi(text, targetLang) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({ q: text, target: targetLang, format: 'text' });
-    const path = `/language/translate/v2?key=${config.translateApiKey}`;
 
     const options = {
       hostname: 'translation.googleapis.com',
-      path,
+      path: `/language/translate/v2?key=${config.translateApiKey}`,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
+        'Content-Length': Buffer.byteLength(body, 'utf8'),
       },
     };
 
     const req = https.request(options, res => {
-      let data = '';
-      res.on('data', chunk => { data += chunk; });
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
       res.on('end', () => {
         try {
-          const parsed = JSON.parse(data);
+          const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
           if (parsed.error) return reject(new Error(parsed.error.message));
           const translated = parsed.data?.translations?.[0]?.translatedText;
           resolve(translated || text);
@@ -48,7 +49,7 @@ function callTranslateApi(text, targetLang) {
     });
 
     req.on('error', reject);
-    req.setTimeout(8000, () => req.destroy(new Error('Translation request timed out')));
+    req.setTimeout(TRANSLATE_TIMEOUT_MS, () => req.destroy(new Error('Translation request timed out')));
     req.write(body);
     req.end();
   });
